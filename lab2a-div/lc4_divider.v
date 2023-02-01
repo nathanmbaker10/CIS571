@@ -29,7 +29,7 @@ module lc4_divider_one_iter(input  wire [15:0] i_dividend,
 
       mux2to1_16 rem_mux_1(.S(i_dividend[15]), .A(rem_shifted), .B(rem_shifted_plus_1), .Out(rem_mux_out_1));
 
-      wire [15:0] rem_sub = rem_mux_out_1 - i_divisor;
+      wire signed [16:0] rem_sub = rem_mux_out_1 - i_divisor;
       wire rem_sub_non_negative = rem_sub >= 0;
 
       mux2to1_16 rem_mux_2(.S(rem_sub_non_negative), .A(rem_mux_out_1), .B(rem_sub), .Out(o_remainder));
