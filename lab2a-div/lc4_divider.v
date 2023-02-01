@@ -10,7 +10,35 @@ module lc4_divider(input  wire [15:0] i_dividend,
                    output wire [15:0] o_remainder,
                    output wire [15:0] o_quotient);
 
-      /*** YOUR CODE HERE ***/
+
+
+      
+      //creating an array of busses for the daisy chain interconnect between the div iters
+      //o_dividend_arr[i] is the o_divident for div_iter i. etc.
+      wire [15: 0] o_dividend_arr[15: 0];
+      wire [15: 0] o_remainder_arr[15: 0];
+      wire [15: 0] o_quotient_arr[15: 0];
+
+
+      //must do initial case for input to first div_iter
+      lc4_divider_one_iter iter0(.i_dividend(i_dividend), .i_divisor(i_divisor), .i_remainder(16'b0), .i_quotient(16'b0), 
+                                     .o_dividend(o_dividend_arr[0]), .o_remainder(o_remainder_arr[0]), 
+                                     .o_quotient(o_quotient_arr[0]));
+      
+      //looping through. input for iter i is output from iter i - 1
+      genvar i;
+      for (i = 1; i < 16; i=i+1) begin
+            lc4_divider_one_iter iterdiv(.i_dividend(o_dividend_arr[i - 1]), .i_divisor(i_divisor), .i_remainder(o_remainder_arr[i -1]), 
+            .i_quotient(o_quotient_arr[i - 1]), .o_dividend(o_dividend_arr[i]), 
+            .o_remainder(o_remainder_arr[i]), .o_quotient(o_quotient_arr[i]));
+      end
+
+      //muxes to check for corner case (x / 0). Ouptut should be 0 for quotient and dividend.
+      wire divbyzero = i_divisor == 0;
+      mux2to1_16 remainder_mux(.S(divbyzero), .A(o_remainder_arr[15]), .B(16'b0), .Out(o_remainder));
+      mux2to1_16 quotient_mux(.S(divbyzero), .A(o_quotient_arr[15]), .B(16'b0), .Out(o_quotient));
+
+
 
 endmodule // lc4_divider
 
@@ -32,7 +60,7 @@ module lc4_divider_one_iter(input  wire [15:0] i_dividend,
       wire signed [16:0] rem_sub = rem_mux_out_1 - i_divisor;
       wire rem_sub_non_negative = rem_sub >= 0;
 
-      mux2to1_16 rem_mux_2(.S(rem_sub_non_negative), .A(rem_mux_out_1), .B(rem_sub), .Out(o_remainder));
+      mux2to1_16 rem_mux_2(.S(rem_sub_non_negative), .A(rem_mux_out_1), .B(rem_sub[15: 0]), .Out(o_remainder));
 
       // QUOTIENT CIRCUIT
       wire [15:0] quot_shifted = i_quotient << 1;
