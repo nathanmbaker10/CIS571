@@ -1,4 +1,4 @@
-/* TODO: INSERT NAME AND PENNKEY HERE */
+/* Matthew Pearl - pearlm, Nathan Baker - nater */
 
 `timescale 1ns / 1ps
 `default_nettype none
@@ -28,7 +28,22 @@ module gp4(input wire [3:0] gin, pin,
            input wire cin,
            output wire gout, pout,
            output wire [2:0] cout);
-   
+    wire g_1_0 = gin[1] | (pin[1] & gin[0]);
+    wire p_1_0 = pin[1] & pin[0];
+    wire c_1 = gin[0] | (pin[0] & cin);
+
+    wire g_3_2 = gin[3] | (pin[3] & gin[2]);
+    wire p_3_2 = pin[3] & pin[2];
+    wire c_2 = g_1_0 | (p_1_0 & cin);
+    wire c_3 = gin[2] | (pin[2] & c_2);
+
+    wire g_3_0 = g_3_2 | (p_3_2 & g_1_0);
+    wire p_3_0 = p_3_2 & p_1_0;
+
+    assign gout = g_3_0;
+    assign pout = p_3_0;
+
+    assign cout = {c_3, c_2, c_1};
 endmodule
 
 /**
@@ -42,7 +57,6 @@ module cla16
   (input wire [15:0]  a, b,
    input wire         cin,
    output wire [15:0] sum);
-
 endmodule
 
 
