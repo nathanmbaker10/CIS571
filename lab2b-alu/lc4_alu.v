@@ -14,7 +14,6 @@ module lc4_alu(input  wire [15:0] i_insn,
       reg [15:0] add_a, add_b;
       reg cin;
 
-      // NOTE TO SELF: ASSIGN A AND B HERE -> CASE AFTER FOR ADD OR NOT
       always @(*) begin
             case (i_insn[15:12])
                   4'b0000 : begin // branch instructions
@@ -47,18 +46,34 @@ module lc4_alu(input  wire [15:0] i_insn,
                               end
                         endcase
                   end
+                  // CONTINUE WITH JSRR AND JSR
                   default : begin
-                        add_a <= 16'b1111111111111111;
-                        add_b <= 16'b1111111111111111;
-                        cin <= 1'b1;
+                        add_a <= 16'b0;
+                        add_b <= 16'b0;
+                        cin <= 1'b0;
                   end
             endcase
       end
 
+      wire [33:0] cla16_inputs = {add_a, add_b, cin};
       wire [15:0] sum;
 
       cla16 adder(.a(add_a), .b(add_b), .cin(cin), .sum(sum));
+      
+      reg [15:0] out;
 
-      assign o_result = sum;
+      // check whether we should add or not
+      always @(*) begin
+            case (cla16_inputs)
+                  33'b0 : begin
+                        out <= 16'b1111111111111111;
+                  end
+                  default : begin
+                        out <= sum;
+                  end
+            endcase
+      end
+
+      assign o_result = out;
 
 endmodule
