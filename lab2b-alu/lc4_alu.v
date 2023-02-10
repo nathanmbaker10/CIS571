@@ -17,10 +17,35 @@ module lc4_alu(input  wire [15:0] i_insn,
       // NOTE TO SELF: ASSIGN A AND B HERE -> CASE AFTER FOR ADD OR NOT
       always @(*) begin
             case (i_insn[15:12])
-                  4'b0000 : begin // branch instructions (add_a = PC + 1)
+                  4'b0000 : begin // branch instructions
                         add_a <= i_pc;
-                        cin <= 1'b1;
                         add_b <= {{7{i_insn[8]}}, i_insn[8:0]};
+                        cin <= 1'b1;
+                  end
+                  4'b0001 : begin // arithmetic instructions (ADD, SUB, ADDI)
+                        add_a <= i_r1data;
+                        cin <= 1'b0;
+                        case (i_insn[5])
+                              1'b1 : begin // ADDI
+                                    add_b <= {{11{i_insn[4]}}, i_insn[4:0]};
+                              end
+                              default : begin
+                                    case (i_insn[5:3])
+                                          3'b000 : begin // ADD
+                                                add_b <= i_r2data;
+                                          end
+                                          3'b010 : begin // SUB
+                                                add_b <= ~i_r2data;
+                                                cin <= 1'b1;
+                                          end
+                                          default : begin
+                                                add_a <= 16'b0;
+                                                add_b <= 16'b0;
+                                                cin <= 1'b0;
+                                          end
+                                    endcase
+                              end
+                        endcase
                   end
                   default : begin
                         add_a <= 16'b1111111111111111;
