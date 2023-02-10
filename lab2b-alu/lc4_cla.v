@@ -48,11 +48,6 @@ module gp4(input wire [3:0] gin, pin,
 
 endmodule
 
-// module one_bit_adder(input wire a, b, c_in, 
-//                      output wire s);
-//     assign s = (a ^ b ^ c_in) | (a & b & c_in);
-// endmodule
-
 /**
  * 16-bit Carry-Lookahead Adder
  * @param a first input
