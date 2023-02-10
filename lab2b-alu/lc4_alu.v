@@ -56,7 +56,7 @@ module lc4_alu(input  wire [15:0] i_insn,
                                     add_a <= i_r1data;
                               end
                               1'b1 : begin // JSR <Label>
-                                    add_a <= 16'b0; // COME BACK TO THIS
+                                    add_a <= (i_pc & 16'b1000000000000000) | (i_insn[10:0] << 4);
                               end
                               default : begin
                                     add_a <= 16'b0;
@@ -95,7 +95,7 @@ module lc4_alu(input  wire [15:0] i_insn,
                                     add_b <= 16'b0;
                                     cin <= 1'b0;
                               end
-                              1'b1 : begin // JMP
+                              1'b1 : begin // JMP <Label>
                                     add_a <= i_pc;
                                     add_b <= {{5{i_insn[10]}}, i_insn[10:0]};
                                     cin <= 1'b1;
@@ -131,6 +131,11 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [33:0] cla16_inputs = {add_a, add_b, cin};
       wire [15:0] sum;
       wire [15:0] remainder, quotient;
+
+      wire [2:0] cmp_nzp = {$signed(i_r1data) < $signed(i_r2data), $signed(i_r1data) == $signed(i_r2data), $signed(i_r1data) > $signed(i_r2data)};
+      wire [2:0] cmpu_nzp = {i_r1data < i_r2data, i_r1data == i_r2data, i_r1data > i_r2data};
+      wire [2:0] cmpi_nzp = {$signed(i_r1data) < $signed(i_insn[6:0]), $signed(i_r1data) == $signed(i_insn[6:0]), $signed(i_r1data) > $signed(i_insn[6:0])};
+      wire [2:0] cmpiu_nzp = {i_r1data < i_insn[6:0], i_r1data == i_insn[6:0], i_r1data > i_insn[6:0]};
 
       lc4_divider divider(.i_dividend(i_r1data), .i_divisor(i_r2data), .o_remainder(remainder), .o_quotient(quotient)); // ADD CONDITION TO USE THIS
       cla16 adder(.a(add_a), .b(add_b), .cin(cin), .sum(sum));
@@ -200,6 +205,77 @@ module lc4_alu(input  wire [15:0] i_insn,
                                           end
                                     endcase
                               end
+                              4'b0010 : begin // comparison instructions (CMP, CMPU, CMPI, CMPIU)
+                                    case (i_insn[8:7])
+                                          2'b00 : begin // CMP
+                                                case (cmp_nzp)
+                                                      3'b100 : begin
+                                                            out <= 16'b1111111111111111;
+                                                      end
+                                                      3'b010 : begin
+                                                            out <= 16'b0000000000000000;
+                                                      end
+                                                      3'b001 : begin
+                                                            out <= 16'b0000000000000001;
+                                                      end
+                                                      default : begin
+                                                            out <= 16'b0;
+                                                      end
+                                                endcase
+                                          end
+                                          2'b01 : begin // CMPU
+                                                case (cmpu_nzp)
+                                                      3'b100 : begin
+                                                            out <= 16'b1111111111111111;
+                                                      end
+                                                      3'b010 : begin
+                                                            out <= 16'b0000000000000000;
+                                                      end
+                                                      3'b001 : begin
+                                                            out <= 16'b0000000000000001;
+                                                      end
+                                                      default : begin
+                                                            out <= 16'b0;
+                                                      end
+                                                endcase
+                                          end
+                                          2'b10 : begin // CMPI
+                                                case (cmpi_nzp)
+                                                      3'b100 : begin
+                                                            out <= 16'b1111111111111111;
+                                                      end
+                                                      3'b010 : begin
+                                                            out <= 16'b0000000000000000;
+                                                      end
+                                                      3'b001 : begin
+                                                            out <= 16'b0000000000000001;
+                                                      end
+                                                      default : begin
+                                                            out <= 16'b0;
+                                                      end
+                                                endcase
+                                          end
+                                          2'b11 : begin // CMPIU
+                                                case (cmpiu_nzp)
+                                                      3'b100 : begin
+                                                            out <= 16'b1111111111111111;
+                                                      end
+                                                      3'b010 : begin
+                                                            out <= 16'b0000000000000000;
+                                                      end
+                                                      3'b001 : begin
+                                                            out <= 16'b0000000000000001;
+                                                      end
+                                                      default : begin
+                                                            out <= 16'b0;
+                                                      end
+                                                endcase
+                                          end
+                                          default : begin
+                                                out <= 16'b0;
+                                          end
+                                    endcase
+                              end
                               default : begin
                                     out <= 16'b0;
                               end
@@ -212,5 +288,6 @@ module lc4_alu(input  wire [15:0] i_insn,
       end
 
       assign o_result = out;
+      // assign o_result = {4'b0, cmp_nzp, cmpu_nzp, cmpi_nzp, cmpiu_nzp};
 
 endmodule
