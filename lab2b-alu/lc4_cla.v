@@ -28,6 +28,7 @@ module gp4(input wire [3:0] gin, pin,
            input wire cin,
            output wire gout, pout,
            output wire [2:0] cout);
+    
     wire g_1_0 = gin[1] | (pin[1] & gin[0]);
     wire p_1_0 = pin[1] & pin[0];
     wire c_1 = gin[0] | (pin[0] & cin);
@@ -44,6 +45,7 @@ module gp4(input wire [3:0] gin, pin,
     assign pout = p_3_0;
 
     assign cout = {c_3, c_2, c_1};
+
 endmodule
 
 /**
@@ -57,6 +59,42 @@ module cla16
   (input wire [15:0]  a, b,
    input wire         cin,
    output wire [15:0] sum);
+
+    wire [15:0] gin;
+    wire [15:0] pin;
+
+    wire [15:0] gout;
+    wire [15:0] pout;
+
+    wire g_3_0, g_7_4, g_11_8, g_15_12;
+    wire p_3_0, p_7_4, p_11_8, p_15_12;
+
+    wire [16:0] cout; // CHECK IF THIS SHOULD BE 16 OR 17 BITS
+
+    genvar i;
+    for (i = 0; i < 16; i = i + 1) begin
+        gp1 g(.a(a[i]), .b(b[i]), .g(gin[i]), .p(pin[i]));
+    end
+
+    assign cout[0] = cin;
+    gp4 gp4_1(.gin(gin[3:0]), .pin(pin[3:0]), .cin(cin), .gout(g_3_0), .pout(p_3_0), .cout(cout[3:1]));
+    assign cout[4] = g_3_0 | (p_3_0 & cin);
+
+    gp4 gp4_2(.gin(gin[7:4]), .pin(pin[7:4]), .cin(cout[4]), .gout(g_7_4), .pout(p_7_4), .cout(cout[7:5]));
+    assign cout[8] = g_7_4 | (p_7_4 & cout[4]);
+
+    gp4 gp4_3(.gin(gin[11:8]), .pin(pin[11:8]), .cin(cout[8]), .gout(g_11_8), .pout(p_11_8), .cout(cout[11:9]));
+    assign cout[12] = g_11_8 | (p_11_8 & cout[8]);
+
+    gp4 gp4_4(.gin(gin[15:12]), .pin(pin[15:12]), .cin(cout[12]), .gout(g_15_12), .pout(p_15_12), .cout(cout[15:13]));
+    wire p_15_0;
+    assign p_15_0 = p_15_12 & p_11_8 & p_7_4 & p_3_0;
+    wire g_15_0;
+    assign g_15_0 = g_15_12 | (p_15_12 & g_11_8) | (p_15_12 & p_11_8 & g_7_4) | (p_15_12 & p_11_8 & p_7_4 & g_3_0);
+    assign cout[16] = g_15_0 | (p_15_0 & cin);
+
+    // IMPLEMENT ADDER
+    
 endmodule
 
 
