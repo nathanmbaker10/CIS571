@@ -137,7 +137,7 @@ module lc4_alu(input  wire [15:0] i_insn,
       wire [2:0] cmpi_nzp = {$signed(i_r1data) < $signed(i_insn[6:0]), $signed(i_r1data) == $signed(i_insn[6:0]), $signed(i_r1data) > $signed(i_insn[6:0])};
       wire [2:0] cmpiu_nzp = {i_r1data < i_insn[6:0], i_r1data == i_insn[6:0], i_r1data > i_insn[6:0]};
 
-      lc4_divider divider(.i_dividend(i_r1data), .i_divisor(i_r2data), .o_remainder(remainder), .o_quotient(quotient)); // ADD CONDITION TO USE THIS
+      lc4_divider divider(.i_dividend(i_r1data), .i_divisor(i_r2data), .o_remainder(remainder), .o_quotient(quotient));
       cla16 adder(.a(add_a), .b(add_b), .cin(cin), .sum(sum));
       
       reg [15:0] out;
@@ -288,6 +288,5 @@ module lc4_alu(input  wire [15:0] i_insn,
       end
 
       assign o_result = out;
-      // assign o_result = {4'b0, cmp_nzp, cmpu_nzp, cmpi_nzp, cmpiu_nzp};
 
 endmodule
