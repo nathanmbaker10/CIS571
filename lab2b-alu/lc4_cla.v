@@ -48,6 +48,11 @@ module gp4(input wire [3:0] gin, pin,
 
 endmodule
 
+// module one_bit_adder(input wire a, b, c_in, 
+//                      output wire s);
+//     assign s = (a ^ b ^ c_in) | (a & b & c_in);
+// endmodule
+
 /**
  * 16-bit Carry-Lookahead Adder
  * @param a first input
@@ -69,31 +74,29 @@ module cla16
     wire g_3_0, g_7_4, g_11_8, g_15_12;
     wire p_3_0, p_7_4, p_11_8, p_15_12;
 
-    wire [16:0] cout; // CHECK IF THIS SHOULD BE 16 OR 17 BITS
+    wire [15:0] carry;
 
     genvar i;
     for (i = 0; i < 16; i = i + 1) begin
         gp1 g(.a(a[i]), .b(b[i]), .g(gin[i]), .p(pin[i]));
     end
 
-    assign cout[0] = cin;
-    gp4 gp4_1(.gin(gin[3:0]), .pin(pin[3:0]), .cin(cin), .gout(g_3_0), .pout(p_3_0), .cout(cout[3:1]));
-    assign cout[4] = g_3_0 | (p_3_0 & cin);
+    assign carry[0] = cin;
+    gp4 gp4_1(.gin(gin[3:0]), .pin(pin[3:0]), .cin(cin), .gout(g_3_0), .pout(p_3_0), .cout(carry[3:1]));
+    assign carry[4] = g_3_0 | (p_3_0 & cin);
 
-    gp4 gp4_2(.gin(gin[7:4]), .pin(pin[7:4]), .cin(cout[4]), .gout(g_7_4), .pout(p_7_4), .cout(cout[7:5]));
-    assign cout[8] = g_7_4 | (p_7_4 & cout[4]);
+    gp4 gp4_2(.gin(gin[7:4]), .pin(pin[7:4]), .cin(carry[4]), .gout(g_7_4), .pout(p_7_4), .cout(carry[7:5]));
+    assign carry[8] = g_7_4 | (p_7_4 & carry[4]);
 
-    gp4 gp4_3(.gin(gin[11:8]), .pin(pin[11:8]), .cin(cout[8]), .gout(g_11_8), .pout(p_11_8), .cout(cout[11:9]));
-    assign cout[12] = g_11_8 | (p_11_8 & cout[8]);
+    gp4 gp4_3(.gin(gin[11:8]), .pin(pin[11:8]), .cin(carry[8]), .gout(g_11_8), .pout(p_11_8), .cout(carry[11:9]));
+    assign carry[12] = g_11_8 | (p_11_8 & carry[8]);
 
-    gp4 gp4_4(.gin(gin[15:12]), .pin(pin[15:12]), .cin(cout[12]), .gout(g_15_12), .pout(p_15_12), .cout(cout[15:13]));
-    wire p_15_0;
-    assign p_15_0 = p_15_12 & p_11_8 & p_7_4 & p_3_0;
-    wire g_15_0;
-    assign g_15_0 = g_15_12 | (p_15_12 & g_11_8) | (p_15_12 & p_11_8 & g_7_4) | (p_15_12 & p_11_8 & p_7_4 & g_3_0);
-    assign cout[16] = g_15_0 | (p_15_0 & cin);
-
-    // IMPLEMENT ADDER
+    gp4 gp4_4(.gin(gin[15:12]), .pin(pin[15:12]), .cin(carry[12]), .gout(g_15_12), .pout(p_15_12), .cout(carry[15:13]));
+    
+    genvar j;
+    for (j = 0; j < 16; j = j + 1) begin
+        assign sum[j] = (a[j] ^ b[j] ^ carry[j]) | (a[j] & b[j] & carry[j]);
+    end
     
 endmodule
 
