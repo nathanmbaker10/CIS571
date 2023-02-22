@@ -10,47 +10,6 @@
 // disable implicit wire declaration
 `default_nettype none
 
-module mux2to1(S, A, B, Out); 
-    input wire S, A, B; 
-    output wire Out; 
-
-    assign Out = S ? B : A;
-endmodule
-
-module mux2to1_16(S, A, B, Out);
-    input wire S;
-    input wire [15:0] A, B;
-    output wire [15:0] Out;
-
-    genvar i;  
-    for (i = 0; i < 16; i = i+1) begin
-        mux2to1 m(.S(S), .A(A[i]), .B(B[i]), .Out(Out[i]));
-    end    
-endmodule
-
-module mux8to1
-    (
-        input  wire [2:0] sel,
-        input  wire       a,
-        input  wire       b,
-        input  wire       c,
-        input  wire       d,
-        input  wire       e,
-        input  wire       f,
-        input  wire       g,
-        input  wire       h,
-        output wire       out
-    );
-
-    assign out = sel == 3'd0 ? a : 
-        (sel == 3'd1 ? b :
-        (sel == 3'd2 ? c :
-        (sel == 3'd3 ? d :
-        (sel == 3'd4 ? e :
-        (sel == 3'd5 ? f :
-        (sel == 3'd6 ? g : h))))));
-endmodule
-
 module lc4_branch_logic
    (input  wire [2:0] insn_11_9,
     input  wire       is_branch,
@@ -81,9 +40,9 @@ module nzp
       input  wire [15:0] in,
       output wire [2:0]  out
    );
-   assign out[1] = in == 16'b0;
-   assign out[2] = in[15] == 1'b1;
-   assign out[0] = in == (~out[1] & ~out[2]);
+   assign out[1] = (in == 16'b0 ? 1'b1 : 1'b0);
+   assign out[2] = (in[15] == 1'b1 ? 1'b1 : 1'b0);
+   assign out[0] = ~out[1] & ~out[2];
 endmodule
 
 module lc4_processor
@@ -182,6 +141,9 @@ module lc4_processor
    );
 
    assign test_cur_insn = i_cur_insn;
+   assign test_regfile_we = regfile_we;
+   assign test_nzp_we = nzp_we;
+   assign test_regfile_wsel = wsel;
 
    assign o_dmem_we = is_store;
    assign test_dmem_we = is_store;
@@ -216,8 +178,8 @@ module lc4_processor
       .i_rd_we(regfile_we)
    );
 
-   assign o_dmem_towrite = o_rt_data;
-   assign test_dmem_data = o_rt_data;
+   assign o_dmem_towrite = (is_load | is_store) ? o_rt_data : 16'b0;
+   assign test_dmem_data = is_load ? o_rt_data : is_store ? i_cur_dmem_data : 16'b0;
 
    // ALU
    wire [15:0] alu_output;
@@ -235,8 +197,8 @@ module lc4_processor
    wire [15:0] alu_mux_output;
    mux2to1_16 alu_mux (.S(select_pc_plus_one), .A(alu_output), .B(pc_plus_one), .Out(alu_mux_output));
 
-   assign o_dmem_addr = alu_mux_output;
-   assign test_dmem_addr = alu_mux_output;
+   assign o_dmem_addr = (is_load | is_store) ? alu_output : 16'b0;
+   assign test_dmem_addr = (is_load | is_store) ? alu_output : 16'b0;
 
    wire [15:0] load_mux_output;
    mux2to1_16 load_mux (.S(is_load), .A(alu_mux_output), .B(i_cur_dmem_data), .Out(load_mux_output));
