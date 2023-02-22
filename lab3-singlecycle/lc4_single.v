@@ -203,7 +203,6 @@ module lc4_processor
    wire [15:0] load_mux_output;
    mux2to1_16 load_mux (.S(is_load), .A(alu_mux_output), .B(i_cur_dmem_data), .Out(load_mux_output));
 
-   assign test_dmem_data = i_cur_dmem_data;
    assign test_regfile_data = load_mux_output;
    assign i_wdata = load_mux_output;
 
