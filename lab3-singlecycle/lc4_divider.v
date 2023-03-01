@@ -17,7 +17,8 @@ module mux2to1_16(S, A, B, Out);
 
     genvar i;  
     for (i = 0; i < 16; i = i+1) begin
-        mux2to1 m(.S(S), .A(A[i]), .B(B[i]), .Out(Out[i]));
+        assign Out[i] = S ? B[i] : A[i];
+        // mux2to1 m(.S(S), .A(A[i]), .B(B[i]), .Out(Out[i]));
     end    
 endmodule
 

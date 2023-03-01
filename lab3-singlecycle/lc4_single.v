@@ -1,4 +1,4 @@
-/* TODO: name and PennKeys of all group members here
+/* Matthew Pearl - pearlm, Nathan Baker - nater
  *
  * lc4_single.v
  * Implements a single-cycle data path
@@ -178,8 +178,8 @@ module lc4_processor
       .i_rd_we(regfile_we)
    );
 
-   assign o_dmem_towrite = (is_load | is_store) ? o_rt_data : 16'b0;
-   assign test_dmem_data = is_load ? o_rt_data : is_store ? i_cur_dmem_data : 16'b0;
+   assign o_dmem_towrite = is_store ? o_rt_data : 16'b0;
+   assign test_dmem_data = is_load ? i_cur_dmem_data : (is_store ? o_rt_data : 16'b0);
 
    // ALU
    wire [15:0] alu_output;
@@ -192,7 +192,7 @@ module lc4_processor
       .o_result(alu_output)
    );    
 
-   mux2to1_16 next_pc_mux (.S(branch_logic_out), .A(pc_plus_one), .B(alu_output), .Out(next_pc));
+   mux2to1_16 next_pc_mux (.S(branch_logic_out | is_control_insn), .A(pc_plus_one), .B(alu_output), .Out(next_pc));
 
    wire [15:0] alu_mux_output;
    mux2to1_16 alu_mux (.S(select_pc_plus_one), .A(alu_output), .B(pc_plus_one), .Out(alu_mux_output));
@@ -226,6 +226,8 @@ module lc4_processor
     */
 `ifndef NDEBUG
    always @(posedge gwe) begin
+      // $display("pc: %h, branch logic: %b, pc+1: %h, alu output: %h, next pc: %h", pc, branch_logic_out, pc_plus_one, alu_output, next_pc);
+      
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);

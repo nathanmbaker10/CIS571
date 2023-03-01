@@ -50,18 +50,25 @@ module Nbit_mux8to1 #(parameter n = 16)
 
     genvar i;
     for (i = 0; i < n; i = i+1) begin
-        mux8to1 m(
-            .sel(sel), 
-            .a(a[i]), 
-            .b(b[i]), 
-            .c(c[i]), 
-            .d(d[i]), 
-            .e(e[i]),
-            .f(f[i]), 
-            .g(g[i]), 
-            .h(h[i]), 
-            .out(out[i])
-        );
+        assign out[i] = sel == 3'd0 ? a[i] : 
+            (sel == 3'd1 ? b[i] :
+            (sel == 3'd2 ? c[i] :
+            (sel == 3'd3 ? d[i] :
+            (sel == 3'd4 ? e[i] :
+            (sel == 3'd5 ? f[i] :
+            (sel == 3'd6 ? g[i] : h[i]))))));
+        // mux8to1 m(
+        //     .sel(sel), 
+        //     .a(a[i]), 
+        //     .b(b[i]), 
+        //     .c(c[i]), 
+        //     .d(d[i]), 
+        //     .e(e[i]),
+        //     .f(f[i]), 
+        //     .g(g[i]), 
+        //     .h(h[i]), 
+        //     .out(out[i])
+        // );
     end
 
 endmodule
