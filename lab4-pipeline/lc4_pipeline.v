@@ -10,6 +10,74 @@
 // disable implicit wire declaration
 `default_nettype none
 
+module mux2to1
+    (
+        input  wire [1:0] sel,
+        input  wire       a,
+        input  wire       b
+        output wire       out
+    );
+
+    assign out = sel == 1b'0 ? a : b;
+endmodule
+
+module Nbit_mux2to1 #(parameter n = 16)
+    (
+        input  wire [  1:0] sel,
+        input  wire [n-1:0] a,
+        input  wire [n-1:0] b,
+        output wire [n-1:0] out
+    );
+
+    genvar i;
+    for (i = 0; i < n; i = i+1) begin
+        mux2to1 m(
+            .sel(sel), 
+            .a(a[i]), 
+            .b(b[i]), 
+            .out(out[i])
+        );
+    end
+endmodule
+
+module mux4to1
+    (
+        input  wire [1:0] sel,
+        input  wire       a,
+        input  wire       b,
+        input  wire       c,
+        input  wire       d,
+        output wire       out
+    );
+
+    assign out = sel == 2'd0 ? a : 
+        (sel == 2'd1 ? b :
+        (sel == 2'd2 ? c : d))
+endmodule
+
+module Nbit_mux4to1 #(parameter n = 16)
+    (
+        input  wire [  1:0] sel,
+        input  wire [n-1:0] a,
+        input  wire [n-1:0] b,
+        input  wire [n-1:0] c,
+        input  wire [n-1:0] d,
+        output wire [n-1:0] out
+    );
+
+    genvar i;
+    for (i = 0; i < n; i = i+1) begin
+        mux4to1 m(
+            .sel(sel), 
+            .a(a[i]), 
+            .b(b[i]), 
+            .c(c[i]), 
+            .d(d[i]), 
+            .out(out[i])
+        );
+    end
+endmodule
+
 module lc4_branch_logic
    (input  wire [2:0] insn_11_9,
     input  wire       is_branch,
@@ -109,7 +177,7 @@ module lc4_processor
    // +4
    wire [15:0] pc_plus_four;
 
-   cla16 adder (.a(pc), .b(16'b4), .cin(1'b0), .sum(pc_plus_four)); 
+   cla16 adder_plus_four (.a(pc), .b(16'b4), .cin(1'b0), .sum(pc_plus_four)); 
 
    // d_separator 
    wire [15:0] pc_out_d;
@@ -147,20 +215,6 @@ module lc4_processor
       .is_control_insn(is_control_insn)
    );
 
-   assign test_cur_insn = i_cur_insn;
-   assign test_regfile_we = regfile_we;
-   assign test_nzp_we = nzp_we;
-   assign test_regfile_wsel = wsel;
-
-   // assign o_dmem_we = is_store;
-   // assign test_dmem_we = is_store;
-
-   // NZP REG
-   wire [2:0] nzp_reg_out;
-   wire [2:0] nzp_reg_in; 
-
-   Nbit_reg #(3, 3'b0) nzp_reg (.in(nzp_reg_in), .out(nzp_reg_out), .clk(clk), .we(nzp_we), .gwe(gwe), .rst(rst));
-
    // REGISTER FILE
    wire [15:0] o_rs_data;
    wire [15:0] o_rt_data;
@@ -180,19 +234,20 @@ module lc4_processor
       .i_rd_we(regfile_we)
    );
 
-   // assign o_dmem_towrite = is_store ? o_rt_data : 16'b0;
-   // assign test_dmem_data = is_load ? i_cur_dmem_data : (is_store ? o_rt_data : 16'b0);
-
    // x_separator
    wire [15:0] pc_out_x;
    wire [15:0] insn_out_x;
    wire [15:0] a_out_x;
    wire [15:0] b_out_x;
-   wire [8:0]  control_x;
+   wire [2:0]  r1sel_out_x;
+   wire [2:0]  r2sel_out_x;
+   wire [9:0]  control_x;
    Nbit_reg #(16) pc_reg_x (.in(pc_out_d), .out(pc_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) insn_reg_x (.in(insn_out_d), .out(insn_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) a_reg_x (.in(o_rs_data), .out(a_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) b_reg_x (.in(o_rt_data), .out(b_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(3)  r1sel_reg_x (.in(r1sel), .out(r1sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(3)  r2sel_reg_x (.in(r2sel), .out(r2sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(10)  control_reg_x (
       .in({wsel, regfile_we, nzp_we, is_load, is_store, select_pc_plus_one, is_branch, is_control_insn}),
       .out(control_x),
@@ -207,18 +262,30 @@ module lc4_processor
    // ALU
    wire [15:0] alu_output;
 
+   wire [15:0] alu_in_a;
+   Nbit_mux4to1 alu_in_a_mux (
+      .sel(r1sel_out_x == control_m[6:4] ? 2'b0 : (r1sel_out_x == cotrol_w[6:4] ? 2'b1 : 2'b2)), 
+      .a(o_out_m), .b(load_mux_output), .c(a_out_x), .d(a_out_x), .out(alu_in_a)
+   );
+
+   wire [15:0] alu_in_b;
+   Nbit_mux4to1 alu_in_b_mux (
+      .sel(r2sel_out_x == control_m[6:4] ? 2'b0 : (r2sel_out_x == cotrol_w[6:4] ? 2'b1 : 2'b2)), 
+      .a(o_out_m), .b(load_mux_output), .c(b_out_x), .d(b_out_x), .out(alu_in_b)
+   );
+
    lc4_alu alu (
       .i_insn(insn_out_x),
       .i_pc(pc_out_x),
-      .i_r1data(a_out_x),
-      .i_r2data(b_out_x),
+      .i_r1data(alu_in_a),
+      .i_r2data(alu_in_b),
       .o_result(alu_output)
    );   
 
    // +1
    wire [15:0] pc_plus_one;
 
-   cla16 adder (.a(pc_out_x), .b(16'b1), .cin(1'b0), .sum(pc_plus_one)); 
+   cla16 adder_plus_one (.a(pc_out_x), .b(16'b1), .cin(1'b0), .sum(pc_plus_one)); 
 
    mux2to1_16 next_pc_mux (.S(branch_logic_out | control_x[0]), .A(pc_plus_one), .B(alu_output), .Out(next_pc));
 
@@ -237,7 +304,7 @@ module lc4_processor
    Nbit_reg #(16) pc_reg_m (.in(pc_out_x), .out(pc_out_m), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) insn_reg_m (.in(insn_out_x), .out(insn_out_m), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) o_reg_m (.in(alu_mux_output), .out(o_out_m), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) b_reg_m (.in(b_out_x), .out(b_out_m), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) b_reg_m (.in(alu_in_b), .out(b_out_m), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) o_dmem_addr_reg_m (.in(o_dmem_addr_in), .out(o_dmem_addr), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(7) control_reg_m (
       .in(control_x[9:3]),
@@ -246,27 +313,49 @@ module lc4_processor
    );
 
    assign o_dmem_we = control_m[0];
+
+   // Nbit_mux2to1 - page 52, second case
+
    assign o_dmem_towrite = control_m[0] ? b_out_m : 16'b0;
 
    // w_separator
-   wire [15:0] insn_out_w;
+   wire [15:0] pc_out_w;
    wire [15:0] o_out_w;
    wire [15:0] d_out_w;
-   wire [5:0] control_w;
-   Nbit_reg #(16) insn_reg_w (.in(insn_out_m), .out(insn_out_w), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   wire [15:0] test_dmem_towrite_w;
+   wire [6:0]  control_w;
+   Nbit_reg #(16) pc_reg_w (.in(pc_out_m), .out(pc_out_w), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) insn_reg_w (.in(insn_out_m), .out(test_cur_insn), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) o_reg_w (.in(o_out_m), .out(o_out_w), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) d_reg_w (.in(i_cur_dmem_data), .out(d_out_w), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(6) control_reg_w (
-      .in({wsel, regfile_we, nzp_we, is_load}),
+   Nbit_reg #(16) test_dmem_towrite_reg_w (.in(o_dmem_towrite), .out(test_dmem_towrite_w), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) test_dmem_addr_reg_w (.in(o_dmem_addr), .out(test_dmem_addr), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(7) control_reg_w (
+      .in(control_m),
       .out(control_w),
       .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)
    );
+
+   assign test_dmem_we = control_w[0];
+   assign test_nzp_we = control_w[2];
+   assign test_regfile_we = control_w[3];
+   assign test_regfile_wsel = control_w[6:4];
+
+   assign test_dmem_data = control_w[1] ? d_out_w : test_dmem_towrite_w;
+
+   cla16 adder_minus_four (.a(pc_out_w), .b(~16'b4), .cin(1'b1), .sum(test_cur_pc)); 
 
    wire [15:0] load_mux_output;
    mux2to1_16 load_mux (.S(control_w[0]), .A(o_out_w), .B(d_out_w), .Out(load_mux_output));
 
    assign test_regfile_data = load_mux_output;
    assign i_wdata = load_mux_output;
+
+   // NZP REG
+   wire [2:0] nzp_reg_out;
+   wire [2:0] nzp_reg_in; 
+
+   Nbit_reg #(3, 3'b0) nzp_reg (.in(nzp_reg_in), .out(nzp_reg_out), .clk(clk), .we(control_w[2]), .gwe(gwe), .rst(rst));
 
    // N/Z/P
    nzp nzp (.in(load_mux_output), .out(nzp_reg_in));
