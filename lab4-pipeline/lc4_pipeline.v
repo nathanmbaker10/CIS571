@@ -23,7 +23,7 @@ endmodule
 
 module Nbit_mux2to1 #(parameter n = 16)
     (
-        input  wire [  1:0] sel,
+        input  wire .slsel,
         input  wire [n-1:0] a,
         input  wire [n-1:0] b,
         output wire [n-1:0] out
@@ -315,8 +315,14 @@ module lc4_processor
    assign o_dmem_we = control_m[0];
 
    // Nbit_mux2to1 - page 52, second case
+   wire [15:0] dmem_data_mux_out;
+   Nbit_mux2to1 dmem_data_mux(.sel(control_w[1] & control_m[0] & control_m[6:4] == control_w[6:4]), 
+      .A(load_mux_output), 
+      .B(b_out_m) 
+      .Out(dmem_data_mux_out)
+   );
 
-   assign o_dmem_towrite = control_m[0] ? b_out_m : 16'b0;
+   assign o_dmem_towrite = control_m[0] ? dmem_data_mux_out : 16'b0;
 
    // w_separator
    wire [15:0] pc_out_w;
