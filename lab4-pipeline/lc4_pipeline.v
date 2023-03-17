@@ -141,10 +141,7 @@ module lc4_processor
    // you desire.
    assign led_data = switch_data;
 
-   wire insn_in_w;
-   assign insn_in_w = 1'b0;
-   Nbit_reg #(1, 1'b0) insn_through_w (.in(pc_out_w == 16'h8204), .out(insn_in_w), .clk(clk), .we(~insn_in_w), .gwe(gwe), .rst(rst));
-   assign test_stall = insn_in_w ? 2'b0 : 2'd2; 
+   assign test_stall = pc_out_w == 16'b0 ? 2'd2 : 2'b0; 
 
    // pc wires attached to the PC register's ports
    wire [15:0]   pc;      // Current program counter (read out from pc_reg)
@@ -161,7 +158,6 @@ module lc4_processor
     *******************************/
 
    assign o_cur_pc = pc;
-   assign test_cur_pc = pc;
 
    // +4
    wire [15:0] pc_plus_four;
@@ -226,8 +222,8 @@ module lc4_processor
 
    wire [15:0] reg_1_mux_out; 
    wire [15:0] reg_2_mux_out;
-   Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel), .a(load_mux_output), .b(o_rs_data), .out(reg_1_mux_out));
-   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel), .a(load_mux_output), .b(o_rt_data), .out(reg_2_mux_out));
+   Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel), .a(o_rs_data), .b(load_mux_output), .out(reg_1_mux_out));
+   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel), .a(o_rt_data), .b(load_mux_output), .out(reg_2_mux_out));
 
    // x_separator
    wire [15:0] pc_out_x;
@@ -280,7 +276,7 @@ module lc4_processor
    // +1
    wire [15:0] pc_plus_one;
 
-   cla16 adder_plus_one (.a(pc_out_x), .b(16'b1), .cin(1'b0), .sum(pc_plus_one)); 
+   cla16 adder_plus_one (.a(pc), .b(16'b1), .cin(1'b0), .sum(pc_plus_one)); 
 
    mux2to1_16 next_pc_mux (.S(branch_logic_out | control_x[0]), .A(pc_plus_one), .B(alu_output), .Out(next_pc));
 
@@ -343,7 +339,7 @@ module lc4_processor
 
    assign test_dmem_data = control_w[1] ? d_out_w : test_dmem_towrite_w;
 
-   cla16 adder_minus_four (.a(pc_out_w), .b(~16'd4), .cin(1'b1), .sum(test_cur_pc)); 
+   cla16 adder_minus_four (.a(pc_out_w), .b(-16'd4), .cin(1'b0), .sum(test_cur_pc)); 
 
    wire [15:0] load_mux_output;
    mux2to1_16 load_mux (.S(control_w[0]), .A(o_out_w), .B(d_out_w), .Out(load_mux_output));
@@ -378,7 +374,7 @@ module lc4_processor
 `ifndef NDEBUG
    always @(posedge gwe) begin
       // $display("pc: %h, branch logic: %b, pc+1: %h, alu output: %h, next pc: %h", pc, branch_logic_out, pc_plus_one, alu_output, next_pc);
-      
+      $display("o_out_w %h alu_output %h alu_in_a %h alu_in_b %h load_mux_output %h r1sel_out_x %h r2sel_out_x %h test_regfile_wsel %h reg1_mux_out %h reg2_mux_out %h", o_out_w, alu_output, alu_in_a, alu_in_b, load_mux_output, r1sel_out_x, r2sel_out_x, test_regfile_wsel, reg_1_mux_out, reg_2_mux_out);
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);
