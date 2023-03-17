@@ -215,15 +215,15 @@ module lc4_processor
       .o_rs_data(o_rs_data),
       .i_rt(r2sel),
       .o_rt_data(o_rt_data),
-      .i_rd(wsel),
+      .i_rd(control_w[6:4]),
       .i_wdata(i_wdata),
-      .i_rd_we(regfile_we)
+      .i_rd_we(control_w[3])
    );
 
    wire [15:0] reg_1_mux_out; 
    wire [15:0] reg_2_mux_out;
-   Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel), .a(o_rs_data), .b(load_mux_output), .out(reg_1_mux_out));
-   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel), .a(o_rt_data), .b(load_mux_output), .out(reg_2_mux_out));
+   Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel & control_w[3] & r1re), .a(o_rs_data), .b(load_mux_output), .out(reg_1_mux_out));
+   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel & control_w[3] & r2re1), .a(o_rt_data), .b(load_mux_output), .out(reg_2_mux_out));
 
    // x_separator
    wire [15:0] pc_out_x;
@@ -232,15 +232,15 @@ module lc4_processor
    wire [15:0] b_out_x;
    wire [2:0]  r1sel_out_x;
    wire [2:0]  r2sel_out_x;
-   wire [9:0]  control_x;
+   wire [11:0]  control_x;
    Nbit_reg #(16) pc_reg_x (.in(pc_out_d), .out(pc_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) insn_reg_x (.in(insn_out_d), .out(insn_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) a_reg_x (.in(reg_1_mux_out), .out(a_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) b_reg_x (.in(reg_2_mux_out), .out(b_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r1sel_reg_x (.in(r1sel), .out(r1sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r2sel_reg_x (.in(r2sel), .out(r2sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(10)  control_reg_x (
-      .in({wsel, regfile_we, nzp_we, is_load, is_store, select_pc_plus_one, is_branch, is_control_insn}),
+   Nbit_reg #(12)  control_reg_x (
+      .in({r1re, r2re, wsel, regfile_we, nzp_we, is_load, is_store, select_pc_plus_one, is_branch, is_control_insn}),
       .out(control_x),
       .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)
    );
@@ -255,13 +255,13 @@ module lc4_processor
 
    wire [15:0] alu_in_a;
    Nbit_mux4to1 alu_in_a_mux (
-      .sel(r1sel_out_x == control_m[6:4] ? 2'b0 : (r1sel_out_x == control_w[6:4] ? 2'b1 : 2'd2)), 
+      .sel(control_x[11] ? (r1sel_out_x == control_m[6:4] & control_m[3] ? 2'b0 : (r1sel_out_x == control_w[6:4] & control_w[3] ? 2'b1 : 2'd2)): 2'd2), 
       .a(o_out_m), .b(load_mux_output), .c(a_out_x), .d(a_out_x), .out(alu_in_a)
    );
 
    wire [15:0] alu_in_b;
    Nbit_mux4to1 alu_in_b_mux (
-      .sel(r2sel_out_x == control_m[6:4] ? 2'b0 : (r2sel_out_x == control_w[6:4] ? 2'b1 : 2'd2)), 
+      .sel(control_x[10] ? (r2sel_out_x == control_m[6:4] & control_m[3] ? 2'b0 : (r2sel_out_x == control_w[6:4] & control_w[3] ? 2'b1 : 2'd2)): 2'd2), 
       .a(o_out_m), .b(load_mux_output), .c(b_out_x), .d(b_out_x), .out(alu_in_b)
    );
 
@@ -374,8 +374,8 @@ module lc4_processor
 `ifndef NDEBUG
    always @(posedge gwe) begin
       // $display("pc: %h, branch logic: %b, pc+1: %h, alu output: %h, next pc: %h", pc, branch_logic_out, pc_plus_one, alu_output, next_pc);
-      $display("test_cur_pc %h r1_sel %h r2_sel %h o_rs_data %h o_rt_data %h | alu_in_a %h alu_in_b %h r1sel_out_x %h r2sel_out_x %h control_x_6_4 %h | o_out_m %h control_m_6_4 %h | load_mux_output %h control_w_6_4 %h regfile_we %h", test_cur_pc, r1sel, r2sel, o_rs_data, o_rt_data, alu_in_a, alu_in_b, r1sel_out_x, r2sel_out_x, control_x[6:4], o_out_m, control_m[6:4], load_mux_output, control_w[6:4], regfile_we);
-      // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
+     //$display("test_cur_pc %h r1_sel %h r2_sel %h o_rs_data %h o_rt_data %h | alu_in_a %h alu_in_b %h r1sel_out_x %h r2sel_out_x %h control_x_6_4 %h | o_out_m %h control_m_6_4 %h | load_mux_output %h control_w_6_4 %h regfile_we %h", test_cur_pc, r1sel, r2sel, o_rs_data, o_rt_data, alu_in_a, alu_in_b, r1sel_out_x, r2sel_out_x, control_x[6:4], o_out_m, control_m[6:4], load_mux_output, control_w[6:4], regfile_we);
+      //$display("load_mux_output %h", load_mux_output);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);
 
