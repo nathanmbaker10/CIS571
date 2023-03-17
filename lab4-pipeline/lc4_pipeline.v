@@ -223,7 +223,7 @@ module lc4_processor
    wire [15:0] reg_1_mux_out; 
    wire [15:0] reg_2_mux_out;
    Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel & control_w[3] & r1re), .a(o_rs_data), .b(load_mux_output), .out(reg_1_mux_out));
-   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel & control_w[3] & r2re1), .a(o_rt_data), .b(load_mux_output), .out(reg_2_mux_out));
+   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel & control_w[3] & r2re), .a(o_rt_data), .b(load_mux_output), .out(reg_2_mux_out));
 
    // x_separator
    wire [15:0] pc_out_x;
