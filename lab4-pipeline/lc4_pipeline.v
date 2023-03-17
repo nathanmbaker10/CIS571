@@ -374,7 +374,7 @@ module lc4_processor
 `ifndef NDEBUG
    always @(posedge gwe) begin
       // $display("pc: %h, branch logic: %b, pc+1: %h, alu output: %h, next pc: %h", pc, branch_logic_out, pc_plus_one, alu_output, next_pc);
-      $display("o_out_w %h alu_output %h alu_in_a %h alu_in_b %h load_mux_output %h r1sel_out_x %h r2sel_out_x %h test_regfile_wsel %h reg1_mux_out %h reg2_mux_out %h", o_out_w, alu_output, alu_in_a, alu_in_b, load_mux_output, r1sel_out_x, r2sel_out_x, test_regfile_wsel, reg_1_mux_out, reg_2_mux_out);
+      $display("test_cur_pc %h r1_sel %h r2_sel %h o_rs_data %h o_rt_data %h | alu_in_a %h alu_in_b %h r1sel_out_x %h r2sel_out_x %h control_x_6_4 %h | o_out_m %h control_m_6_4 %h | load_mux_output %h control_w_6_4 %h regfile_we %h", test_cur_pc, r1sel, r2sel, o_rs_data, o_rt_data, alu_in_a, alu_in_b, r1sel_out_x, r2sel_out_x, control_x[6:4], o_out_m, control_m[6:4], load_mux_output, control_w[6:4], regfile_we);
       // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);
