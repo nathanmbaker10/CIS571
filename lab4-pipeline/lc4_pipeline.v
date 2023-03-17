@@ -10,20 +10,9 @@
 // disable implicit wire declaration
 `default_nettype none
 
-module mux2to1
-    (
-        input  wire [1:0] sel,
-        input  wire       a,
-        input  wire       b
-        output wire       out
-    );
-
-    assign out = sel == 1b'0 ? a : b;
-endmodule
-
 module Nbit_mux2to1 #(parameter n = 16)
     (
-        input  wire .slsel,
+        input  wire         sel,
         input  wire [n-1:0] a,
         input  wire [n-1:0] b,
         output wire [n-1:0] out
@@ -32,10 +21,10 @@ module Nbit_mux2to1 #(parameter n = 16)
     genvar i;
     for (i = 0; i < n; i = i+1) begin
         mux2to1 m(
-            .sel(sel), 
-            .a(a[i]), 
-            .b(b[i]), 
-            .out(out[i])
+            .S(sel), 
+            .A(a[i]), 
+            .B(b[i]), 
+            .Out(out[i])
         );
     end
 endmodule
@@ -52,7 +41,7 @@ module mux4to1
 
     assign out = sel == 2'd0 ? a : 
         (sel == 2'd1 ? b :
-        (sel == 2'd2 ? c : d))
+        (sel == 2'd2 ? c : d));
 endmodule
 
 module Nbit_mux4to1 #(parameter n = 16)
@@ -152,10 +141,10 @@ module lc4_processor
    // you desire.
    assign led_data = switch_data;
 
-   
-   /* DO NOT MODIFY THIS CODE */
-   // Always execute one instruction each cycle (test_stall will get used in your pipelined processor)
-   assign test_stall = 2'b0; 
+   wire insn_in_w;
+   assign insn_in_w = 1'b0;
+   Nbit_reg #(1, 1'b0) insn_through_w (.in(pc_out_w == 16'h8204), .out(insn_in_w), .clk(clk), .we(~insn_in_w), .gwe(gwe), .rst(rst));
+   assign test_stall = insn_in_w ? 2'b0 : 2'd2; 
 
    // pc wires attached to the PC register's ports
    wire [15:0]   pc;      // Current program counter (read out from pc_reg)
@@ -176,14 +165,15 @@ module lc4_processor
 
    // +4
    wire [15:0] pc_plus_four;
+   wire [15:0] four;
 
-   cla16 adder_plus_four (.a(pc), .b(16'b4), .cin(1'b0), .sum(pc_plus_four)); 
+   cla16 adder_plus_four (.a(pc), .b(16'd4), .cin(1'b0), .sum(pc_plus_four)); 
 
    // d_separator 
    wire [15:0] pc_out_d;
    wire [15:0] insn_out_d;
    Nbit_reg #(16) pc_reg_d (.in(pc_plus_four), .out(pc_out_d), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) insn_reg_d (.in(insn_in), .out(insn_out_d), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) insn_reg_d (.in(i_cur_insn), .out(insn_out_d), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    // DECODER
    wire [ 2:0] r1sel;
@@ -234,6 +224,11 @@ module lc4_processor
       .i_rd_we(regfile_we)
    );
 
+   wire [15:0] reg_1_mux_out; 
+   wire [15:0] reg_2_mux_out;
+   Nbit_mux2to1 reg_1_mux (.sel(control_w[6:4] == r1sel), .a(load_mux_output), .b(o_rs_data), .out(reg_1_mux_out));
+   Nbit_mux2to1 reg_2_mux (.sel(control_w[6:4] == r2sel), .a(load_mux_output), .b(o_rt_data), .out(reg_2_mux_out));
+
    // x_separator
    wire [15:0] pc_out_x;
    wire [15:0] insn_out_x;
@@ -244,8 +239,8 @@ module lc4_processor
    wire [9:0]  control_x;
    Nbit_reg #(16) pc_reg_x (.in(pc_out_d), .out(pc_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(16) insn_reg_x (.in(insn_out_d), .out(insn_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) a_reg_x (.in(o_rs_data), .out(a_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) b_reg_x (.in(o_rt_data), .out(b_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) a_reg_x (.in(reg_1_mux_out), .out(a_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) b_reg_x (.in(reg_2_mux_out), .out(b_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r1sel_reg_x (.in(r1sel), .out(r1sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r2sel_reg_x (.in(r2sel), .out(r2sel_out_x), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(10)  control_reg_x (
@@ -264,13 +259,13 @@ module lc4_processor
 
    wire [15:0] alu_in_a;
    Nbit_mux4to1 alu_in_a_mux (
-      .sel(r1sel_out_x == control_m[6:4] ? 2'b0 : (r1sel_out_x == cotrol_w[6:4] ? 2'b1 : 2'b2)), 
+      .sel(r1sel_out_x == control_m[6:4] ? 2'b0 : (r1sel_out_x == control_w[6:4] ? 2'b1 : 2'd2)), 
       .a(o_out_m), .b(load_mux_output), .c(a_out_x), .d(a_out_x), .out(alu_in_a)
    );
 
    wire [15:0] alu_in_b;
    Nbit_mux4to1 alu_in_b_mux (
-      .sel(r2sel_out_x == control_m[6:4] ? 2'b0 : (r2sel_out_x == cotrol_w[6:4] ? 2'b1 : 2'b2)), 
+      .sel(r2sel_out_x == control_m[6:4] ? 2'b0 : (r2sel_out_x == control_w[6:4] ? 2'b1 : 2'd2)), 
       .a(o_out_m), .b(load_mux_output), .c(b_out_x), .d(b_out_x), .out(alu_in_b)
    );
 
@@ -314,12 +309,11 @@ module lc4_processor
 
    assign o_dmem_we = control_m[0];
 
-   // Nbit_mux2to1 - page 52, second case
    wire [15:0] dmem_data_mux_out;
    Nbit_mux2to1 dmem_data_mux(.sel(control_w[1] & control_m[0] & control_m[6:4] == control_w[6:4]), 
-      .A(load_mux_output), 
-      .B(b_out_m) 
-      .Out(dmem_data_mux_out)
+      .a(load_mux_output), 
+      .b(b_out_m), 
+      .out(dmem_data_mux_out)
    );
 
    assign o_dmem_towrite = control_m[0] ? dmem_data_mux_out : 16'b0;
@@ -349,7 +343,7 @@ module lc4_processor
 
    assign test_dmem_data = control_w[1] ? d_out_w : test_dmem_towrite_w;
 
-   cla16 adder_minus_four (.a(pc_out_w), .b(~16'b4), .cin(1'b1), .sum(test_cur_pc)); 
+   cla16 adder_minus_four (.a(pc_out_w), .b(~16'd4), .cin(1'b1), .sum(test_cur_pc)); 
 
    wire [15:0] load_mux_output;
    mux2to1_16 load_mux (.S(control_w[0]), .A(o_out_w), .B(d_out_w), .Out(load_mux_output));

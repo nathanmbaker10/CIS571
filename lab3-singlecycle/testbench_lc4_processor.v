@@ -5,7 +5,7 @@
 `define EXIT_AFTER_FIRST_ERROR 0
 
 // change this to adjust how many errors are printed out
-`define MAX_ERRORS_TO_DISPLAY 15
+`define MAX_ERRORS_TO_DISPLAY 10
 
 // set this to 1 to create a waveform file for easier debugging
 `define GENERATE_VCD 0
@@ -291,8 +291,8 @@ module test_processor;
                // dmem_addr
                if (verify_dmem_addr !== test_dmem_addr) begin
                   if (errors < `MAX_ERRORS_TO_DISPLAY) begin
-                     $display( "Error at line %d: dmem_addr should be %h (but was %h)", 
-                               linenum, verify_dmem_addr, test_dmem_addr);
+                     $display( "Error at pc %h: dmem_addr should be %h (but was %h)", 
+                               verify_pc, verify_dmem_addr, test_dmem_addr);
                   end
                   errors = errors + 1;
                end
@@ -300,8 +300,8 @@ module test_processor;
                // dmem_data
                if (verify_dmem_data !== test_dmem_data) begin
                   if (errors < `MAX_ERRORS_TO_DISPLAY) begin
-                     $display( "Error at line %d: dmem_data should be %h (but was %h)", 
-                               linenum, verify_dmem_data, test_dmem_data);
+                     $display( "Error at pc %h: dmem_data should be %h (but was %h)", 
+                               verify_pc, verify_dmem_data, test_dmem_data);
                   end
                   errors = errors + 1;
                end
