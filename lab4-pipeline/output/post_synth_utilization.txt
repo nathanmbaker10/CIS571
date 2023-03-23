@@ -1,8 +1,8 @@
 Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
 ------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
-| Date         : Fri Mar 17 13:12:16 2023
-| Host         : big24.seas.upenn.edu running 64-bit openSUSE Leap 15.4
+| Date         : Thu Mar 23 02:08:58 2023
+| Host         : big13.seas.upenn.edu running 64-bit openSUSE Leap 15.4
 | Command      : report_utilization -file ./output/post_synth_utilization.txt
 | Design       : lc4_system
 | Device       : 7z020clg484-1
@@ -30,13 +30,13 @@ Table of Contents
 +----------------------------+------+-------+-----------+-------+
 |          Site Type         | Used | Fixed | Available | Util% |
 +----------------------------+------+-------+-----------+-------+
-| Slice LUTs*                | 1598 |     0 |     53200 |  3.00 |
-|   LUT as Logic             | 1595 |     0 |     53200 |  3.00 |
-|   LUT as Memory            |    3 |     0 |     17400 |  0.02 |
+| Slice LUTs*                | 1617 |     0 |     53200 |  3.04 |
+|   LUT as Logic             | 1615 |     0 |     53200 |  3.04 |
+|   LUT as Memory            |    2 |     0 |     17400 |  0.01 |
 |     LUT as Distributed RAM |    0 |     0 |           |       |
-|     LUT as Shift Register  |    3 |     0 |           |       |
-| Slice Registers            |  513 |     0 |    106400 |  0.48 |
-|   Register as Flip Flop    |  513 |     0 |    106400 |  0.48 |
+|     LUT as Shift Register  |    2 |     0 |           |       |
+| Slice Registers            |  529 |     0 |    106400 |  0.50 |
+|   Register as Flip Flop    |  529 |     0 |    106400 |  0.50 |
 |   Register as Latch        |    0 |     0 |    106400 |  0.00 |
 | F7 Muxes                   |    1 |     0 |     26600 | <0.01 |
 | F8 Muxes                   |    0 |     0 |     13300 |  0.00 |
@@ -59,7 +59,7 @@ Table of Contents
 | 0     |          Yes |           - |          Set |
 | 0     |          Yes |           - |        Reset |
 | 0     |          Yes |         Set |            - |
-| 513   |          Yes |       Reset |            - |
+| 529   |          Yes |       Reset |            - |
 +-------+--------------+-------------+--------------+
 
 
@@ -152,19 +152,19 @@ Table of Contents
 +------------+------+---------------------+
 |  Ref Name  | Used | Functional Category |
 +------------+------+---------------------+
-| LUT6       |  772 |                 LUT |
-| FDRE       |  513 |        Flop & Latch |
-| LUT4       |  333 |                 LUT |
-| LUT5       |  313 |                 LUT |
-| LUT3       |  288 |                 LUT |
+| LUT6       |  766 |                 LUT |
+| FDRE       |  529 |        Flop & Latch |
+| LUT4       |  337 |                 LUT |
+| LUT5       |  335 |                 LUT |
+| LUT3       |  311 |                 LUT |
 | LUT2       |  198 |                 LUT |
 | CARRY4     |   97 |          CarryLogic |
 | RAMB36E1   |   40 |        Block Memory |
-| LUT1       |   24 |                 LUT |
 | OBUF       |   22 |                  IO |
+| LUT1       |   21 |                 LUT |
 | IBUF       |   14 |                  IO |
 | BUFG       |    4 |               Clock |
-| SRL16E     |    3 |  Distributed Memory |
+| SRL16E     |    2 |  Distributed Memory |
 | MUXF7      |    1 |               MuxFx |
 | MMCME2_ADV |    1 |               Clock |
 | DSP48E1    |    1 |    Block Arithmetic |

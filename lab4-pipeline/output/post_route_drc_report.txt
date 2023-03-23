@@ -1,8 +1,8 @@
 Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
 ------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
-| Date         : Fri Mar 17 13:12:53 2023
-| Host         : big24.seas.upenn.edu running 64-bit openSUSE Leap 15.4
+| Date         : Thu Mar 23 02:10:03 2023
+| Host         : big13.seas.upenn.edu running 64-bit openSUSE Leap 15.4
 | Command      : report_drc -file ./output/post_route_drc_report.txt
 | Design       : lc4_system
 | Device       : xc7z020clg484-1
