@@ -22,44 +22,6 @@ module Nbit_mux2to1 #(parameter n = 16)
     end
 endmodule
 
-module mux4to1
-    (
-        input  wire [1:0] sel,
-        input  wire       a,
-        input  wire       b,
-        input  wire       c,
-        input  wire       d,
-        output wire       out
-    );
-
-    assign out = sel == 2'd0 ? a : 
-        (sel == 2'd1 ? b :
-        (sel == 2'd2 ? c : d));
-endmodule
-
-module Nbit_mux4to1 #(parameter n = 16)
-    (
-        input  wire [  1:0] sel,
-        input  wire [n-1:0] a,
-        input  wire [n-1:0] b,
-        input  wire [n-1:0] c,
-        input  wire [n-1:0] d,
-        output wire [n-1:0] out
-    );
-
-    genvar i;
-    for (i = 0; i < n; i = i+1) begin
-        mux4to1 m(
-            .sel(sel), 
-            .a(a[i]), 
-            .b(b[i]), 
-            .c(c[i]), 
-            .d(d[i]), 
-            .out(out[i])
-        );
-    end
-endmodule
-
 module lc4_branch_logic
    (input  wire [2:0] insn_11_9,
     input  wire       is_branch,
@@ -145,7 +107,7 @@ module lc4_processor(input wire         clk,             // main clock
    wire [15:0]   next_pc; // Next program counter (you compute this and feed it into next_pc)
 
    // Program counter register, starts at 8200h at bootup
-   Nbit_reg #(16, 16'h8200) pc_reg (.in(stall_A ? pc : (stall_B | hazard_B ? pc_B : stall_out_x_B != 2'd0 ? next_pc_B : next_pc_A)), .out(pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16, 16'h8200) pc_reg (.in(stall_A ? pc : (stall_B | hazard_B ? pc_B : stall_out_x_A == 2'd0 ? next_pc_A : next_pc_B)), .out(pc), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    /* END DO NOT MODIFY THIS CODE */
 
@@ -190,7 +152,7 @@ module lc4_processor(input wire         clk,             // main clock
       .wsel(wsel_A), 
       .regfile_we(regfile_we_A), 
       .nzp_we(nzp_we_A), 
-      .select_pc_plus_one(select_pc_plus_on_A), 
+      .select_pc_plus_one(select_pc_plus_one_A), 
       .is_load(is_load_A), 
       .is_store(is_store_A), 
       .is_branch(is_branch_A), 
@@ -204,8 +166,8 @@ module lc4_processor(input wire         clk,             // main clock
    wire [15:0] pc_out_d_B;
    wire [15:0] insn_out_d_B;
    wire [1:0]  stall_out_d_B;
-   Nbit_reg #(16) pc_reg_d_B (.in(stall_A ? pc_out_d_B : pc_B), .out(pc_out_d_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
-   Nbit_reg #(16) insn_reg_d_B (.in(misprediction_B ? 16'b0 : (stall_A ? insn_out_d_B : i_cur_insn_B)), .out(insn_out_d_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) pc_reg_d_B (.in(stall_A ? pc_out_d_B : (stall_B | hazard_B ? pc: pc_B)), .out(pc_out_d_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(16) insn_reg_d_B (.in(misprediction_B ? 16'b0 : (stall_A ? insn_out_d_B : (stall_B | hazard_B ? i_cur_insn_A : i_cur_insn_B))), .out(insn_out_d_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(2, 2'd2)  stall_reg_d_B (.in(misprediction_B ? 2'd2 : 2'd0), .out(stall_out_d_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    // DECODER
@@ -231,7 +193,7 @@ module lc4_processor(input wire         clk,             // main clock
       .wsel(wsel_B), 
       .regfile_we(regfile_we_B), 
       .nzp_we(nzp_we_B), 
-      .select_pc_plus_one(select_pc_plus_on_B), 
+      .select_pc_plus_one(select_pc_plus_one_B), 
       .is_load(is_load_B), 
       .is_store(is_store_B), 
       .is_branch(is_branch_B), 
@@ -239,7 +201,7 @@ module lc4_processor(input wire         clk,             // main clock
    );
 
    wire hazard_B;
-   assign hazard_B = ~stall_A & (((is_store_A | is_load_A) & (is_store_B | is_load_B)) | (r1sel_B == wsel_A & r1re_B & regfile_we_A) | (r2sel_B == wsel_A & r2re_B & regfile_we_A));
+   assign hazard_B = ~stall_A & (((is_store_A | is_load_A) & (is_store_B | is_load_B)) | (r1sel_B == wsel_A & r1re_B & regfile_we_A) | (r2sel_B == wsel_A & r2re_B & regfile_we_A) | (wsel_A == wsel_B & insn_out_d_B[15:12] == 4'b1101 & regfile_we_A));
    wire stall_B;
    assign stall_B = ~stall_A & ~hazard_B & ((control_x_A[4] & (r1sel_B == control_x_A[9:7] & r1re_B & ~(r1sel_B == control_x_B[9:7] & control_x_B[6])| ((r2sel_B == control_x_A[9:7]) & r2re_B & ~is_store_B) | is_branch_B)) 
       | (control_x_B[4] & (r1sel_B == control_x_B[9:7] & r1re_B | ((r2sel_B == control_x_B[9:7]) & r2re_B & ~is_store_B) | is_branch_B)));
@@ -290,7 +252,7 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(3)  r1sel_reg_x_A (.in(r1sel_A), .out(r1sel_out_x_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r2sel_reg_x_A (.in(r2sel_A), .out(r2sel_out_x_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(10)  control_reg_x_A (
-      .in((misprediction_A | stall_A | misprediction_B) ? 12'b0 : ({wsel_A, regfile_we_A, nzp_we_A, is_load_A, is_store_A, select_pc_plus_one_A, is_branch_A, is_control_insn_A})),
+      .in((misprediction_A | stall_A | misprediction_B) ? 10'b0 : ({wsel_A, regfile_we_A, nzp_we_A, is_load_A, is_store_A, select_pc_plus_one_A, is_branch_A, is_control_insn_A})),
       .out(control_x_A),
       .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)
    );
@@ -305,10 +267,14 @@ module lc4_processor(input wire         clk,             // main clock
 
    // ALU
    wire [15:0] alu_output_A;
-
+   wire [2:0] alu_in_a_A_selector;
+   assign alu_in_a_A_selector = (r1sel_out_x_A == control_m_B[6:4] & control_m_B[3] & stall_out_m_B == 0) ? 3'd0 : 
+      ((r1sel_out_x_A == control_m_A[6:4] & control_m_A[3] & stall_out_m_A == 0) ? 3'd1 : 
+      ((r1sel_out_x_A == control_w_B[6:4] & control_w_B[3] & test_stall_B == 0) ? 3'd2 :
+      ((r1sel_out_x_A == control_w_A[6:4] & control_w_A[3]) & test_stall_A == 0? 3'd3 : 3'd4)));
    wire [15:0] alu_in_a_A;
    Nbit_mux8to1 alu_in_a_mux_A (
-      .sel(r1sel_out_x_A == control_m_B[6:4] & control_m_B[3] ? 2'd0 : (r1sel_out_x_A == control_m_A[6:4] & control_m_A[3] ? 2'd1 : (r1sel_out_x_A == control_w_B[6:4] & control_w_B[3] ? 2'd2 : r1sel_out_x_A == control_w_A[6:4] & control_w_A[3] ? 2'd3) : 2d'4)), 
+      .sel(alu_in_a_A_selector), 
       .a(o_out_m_B), 
       .b(o_out_m_A), 
       .c(load_mux_output_B), 
@@ -322,8 +288,11 @@ module lc4_processor(input wire         clk,             // main clock
 
    wire [15:0] alu_in_b_A;
    Nbit_mux8to1 alu_in_b_mux_A (
-      .sel(r2sel_out_x_A == control_m_B[6:4] & control_m_B[3] ? 2'd0 : (r2sel_out_x_A == control_m_A[6:4] & control_m_A[3] ? 2'd1 : (r2sel_out_x_A == control_w_B[6:4] & control_w_B[3] ? 2'd2 : r2sel_out_x_A == control_w_A[6:4] & control_w_A[3] ? 2'd3) : 2d'4)), 
-      a(o_out_m_B), 
+      .sel((r2sel_out_x_A == control_m_B[6:4] & control_m_B[3] & stall_out_m_B == 0) ? 3'd0 : 
+      ((r2sel_out_x_A == control_m_A[6:4] & control_m_A[3] & stall_out_m_A == 0) ? 3'd1 : 
+      ((r2sel_out_x_A == control_w_B[6:4] & control_w_B[3] & test_stall_B == 0) ? 3'd2 : 
+      ((r2sel_out_x_A == control_w_A[6:4] & control_w_A[3] & test_stall_A == 0) ? 3'd3 : 3'd4)))), 
+      .a(o_out_m_B), 
       .b(o_out_m_A), 
       .c(load_mux_output_B), 
       .d(load_mux_output_A), 
@@ -357,7 +326,7 @@ module lc4_processor(input wire         clk,             // main clock
 
    wire choose_nzp_reg_out_A;
 
-   NBit_red #(1) choose_nzp_reg_A (.in(choose_B_NZP ? 1'b0 : (choose_A_NZP ? 1'b1 : choose_nzp_reg_out_A)), .out(choose_nzp_reg_out_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
+   Nbit_reg #(1, 1'b0) choose_nzp_reg_A (.in(choose_B_NZP ? 1'b0 : (choose_A_NZP ? 1'b1 : choose_nzp_reg_out_A)), .out(choose_nzp_reg_out_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    nzp nzp_x_A (.in(control_x_A[5] ? alu_mux_output_A : i_cur_dmem_data), .out(nzp_reg_in_A));
 
@@ -366,10 +335,10 @@ module lc4_processor(input wire         clk,             // main clock
    wire [15:0] pc_f_plus_one_A;
 
    cla16 adder_pc_x_plus_one_A (.a(pc_out_x_A), .b(16'b1), .cin(1'b0), .sum(pc_x_plus_one_A)); 
-   cla16 adder_pc_f_plus_one_B (.a(pc), .b(16'b1), .cin(1'b0), .sum(pc_f_plus_one_A)); // CHECK PC
+   cla16 adder_pc_f_plus_one_A (.a(pc), .b(16'b1), .cin(1'b0), .sum(pc_f_plus_one_A)); // CHECK PC
 
    wire [15:0] next_pc_A;
-   mux2to1_16 next_pc_mux_A (.S(branch_logic_out_A | control_x_A[0]), .A(pc_f_plus_one_A), .B(alu_output_A), .Out(next_pc_A));
+   mux2to1_16 next_pc_mux_A (.S(branch_logic_out_A | control_x_A[0]), .A(pc_f_plus_one_B), .B(alu_output_A), .Out(next_pc_A));
 
    wire [15:0] alu_mux_output_A;
    mux2to1_16 alu_mux_A (.S(control_x_A[2]), .A(alu_output_A), .B(pc_x_plus_one_A), .Out(alu_mux_output_A));
@@ -392,7 +361,7 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(3)  r1sel_reg_x_B (.in(r1sel_B), .out(r1sel_out_x_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r2sel_reg_x_B (.in(r2sel_B), .out(r2sel_out_x_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(10)  control_reg_x_B (
-      .in((misprediction_A | stall_A | misprediction_B | stall_B) ? 12'b0 : ({wsel_B, regfile_we_B, nzp_we_B, is_load_B, is_store_B, select_pc_plus_one_B, is_branch_B, is_control_insn_B})),
+      .in((misprediction_A | stall_A | misprediction_B | stall_B) ? 10'b0 : ({wsel_B, regfile_we_B, nzp_we_B, is_load_B, is_store_B, select_pc_plus_one_B, is_branch_B, is_control_insn_B})),
       .out(control_x_B),
       .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)
    );
@@ -410,7 +379,10 @@ module lc4_processor(input wire         clk,             // main clock
 
    wire [15:0] alu_in_a_B;
    Nbit_mux8to1 alu_in_a_mux_B (
-      .sel(r1sel_out_x_B == control_m_B[6:4] & control_m_B[3] ? 2'd0 : (r1sel_out_x_B == control_m_A[6:4] & control_m_A[3] ? 2'd1 : (r1sel_out_x_B == control_w_B[6:4] & control_w_B[3] ? 2'd2 : r1sel_out_x_B == control_w_A[6:4] & control_w_A[3] ? 2'd3) : 2d'4)), 
+      .sel((r1sel_out_x_B == control_m_B[6:4] & control_m_B[3] & stall_out_m_B == 0) ? 3'd0 : 
+      ((r1sel_out_x_B == control_m_A[6:4] & control_m_A[3] & stall_out_m_A == 0) ? 3'd1 : 
+      ((r1sel_out_x_B == control_w_B[6:4] & control_w_B[3] & test_stall_B == 0) ? 3'd2 : 
+      ((r1sel_out_x_B == control_w_A[6:4] & control_w_A[3] & test_stall_A == 0) ? 3'd3 : 3'd4)))), 
       .a(o_out_m_B), 
       .b(o_out_m_A), 
       .c(load_mux_output_B), 
@@ -424,8 +396,11 @@ module lc4_processor(input wire         clk,             // main clock
 
    wire [15:0] alu_in_b_B;
    Nbit_mux8to1 alu_in_b_mux_B (
-      .sel(r2sel_out_x_B == control_m_B[6:4] & control_m_B[3] ? 2'd0 : (r2sel_out_x_B == control_m_A[6:4] & control_m_A[3] ? 2'd1 : (r2sel_out_x_B == control_w_B[6:4] & control_w_B[3] ? 2'd2 : r2sel_out_x_B == control_w_A[6:4] & control_w_A[3] ? 2'd3) : 2d'4)), 
-      a(o_out_m_B), 
+      .sel((r2sel_out_x_B == control_m_B[6:4] & control_m_B[3] & stall_out_m_B == 0) ? 2'd0 : 
+      ((r2sel_out_x_B == control_m_A[6:4] & control_m_A[3] & stall_out_m_A == 0) ? 2'd1 : 
+      ((r2sel_out_x_B == control_w_B[6:4] & control_w_B[3] & test_stall_B == 0) ? 2'd2 : 
+      ((r2sel_out_x_B == control_w_A[6:4] & control_w_A[3] & test_stall_A == 0) ? 2'd3 : 3'd4)))), 
+      .a(o_out_m_B), 
       .b(o_out_m_A), 
       .c(load_mux_output_B), 
       .d(load_mux_output_A), 
@@ -474,7 +449,7 @@ module lc4_processor(input wire         clk,             // main clock
    wire [15:0] insn_out_m_A;
    wire [15:0] o_out_m_A;
    wire [15:0] b_out_m_A;
-   wire [6:0]  control_m_A
+   wire [6:0]  control_m_A;
    wire [1:0]  stall_out_m_A;
    wire [2:0]  r2sel_out_m_A;
    wire [15:0] o_dmem_addr_A;
@@ -492,7 +467,7 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(2, 2'd2)  stall_reg_m_A (.in(stall_out_x_A), .out(stall_out_m_A), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
 
    wire [15:0] dmem_data_mux_out_A;
-   Nbit_mux4to1 dmem_data_mux_A (.sel(control_m_A[0] ? (control_w_B[1] & control_w_B[6:4] == control_m_A[6:4] ? 2'd0 : (control_w_A[1] & control_w_A[6:4] == control_m_A[6:4] ? 2'd1 : 2'd2)) : 2'd2), 
+   Nbit_mux4to1 dmem_data_mux_A (.sel(control_m_A[0] ? (control_w_B[1] & control_w_B[6:4] == control_m_A[6:4] & test_stall_B == 0 ? 2'd0 : (control_w_A[1] & control_w_A[6:4] == control_m_A[6:4] & test_stall_A == 0 ? 2'd1 : 2'd2)) : 2'd2), 
       .a(load_mux_output_B), 
       .b(load_mux_output_A), 
       .c(b_out_m_A),
@@ -515,7 +490,7 @@ module lc4_processor(input wire         clk,             // main clock
    Nbit_reg #(16) o_dmem_addr_reg_m_B (.in(o_dmem_addr_in_B), .out(o_dmem_addr_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(3)  r2sel_reg_m_B (.in(r2sel_out_x_B), .out(r2sel_out_m_B), .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst));
    Nbit_reg #(7) control_reg_m_B (
-      .in(misprediction_A ? 16'b0 : control_x_B[9:3]),
+      .in(misprediction_A ? 7'b0 : control_x_B[9:3]),
       .out(control_m_B),
       .clk(clk), .we(1'b1), .gwe(gwe), .rst(rst)
    );
@@ -525,7 +500,8 @@ module lc4_processor(input wire         clk,             // main clock
    assign o_dmem_addr = control_m_A[0] | control_m_A[1] ? o_dmem_addr_A : (control_m_B[0] | control_m_B[1] ? o_dmem_addr_B : 16'b0);
 
    wire [15:0] dmem_data_mux_out_B;
-   Nbit_mux4to1 dmem_data_mux_B (.sel(control_m_B[0] ? (control_m_A[6:4] == control_m_B[6:4] & control_m_A[3] ? 2'd0 : (control_w_B[1] & control_w_B[6:4] == control_m_A[6:4] ? 2'd1 : (control_w_A[1] & control_w_A[6:4] == control_m_A[6:4] ? 2'd2 : 2'd3))) : 2'd3), 
+   Nbit_mux4to1 dmem_data_mux_B (.sel(control_m_B[0] ? (control_m_A[6:4] == control_m_B[6:4] & control_m_A[3] & stall_out_m_A == 0 ? 2'd0 : 
+   (control_w_B[1] & control_w_B[6:4] == control_m_A[6:4] & test_stall_B == 0 ? 2'd1 : (control_w_A[1] & control_w_A[6:4] == control_m_A[6:4] & test_stall_A == 0? 2'd2 : 2'd3))) : 2'd3), 
       .a(dmem_data_mux_out_A), 
       .b(load_mux_output_B), 
       .c(load_mux_output_A),
@@ -610,10 +586,10 @@ module lc4_processor(input wire         clk,             // main clock
     * to conditionally print out information.
     */
    always @(posedge gwe) begin
-      // $display("%d %h %h %h %h %h", $time, f_pc, d_pc, e_pc, m_pc, test_cur_pc);
+      //$display("O_out_w_A %h alu_mux_output_A %h alu_in_a_A %h alu_in_b_A %h alu_in_a_A_selector %h o_out_m_b %h stall_out_m_b %h", o_out_w_A, alu_mux_output_A, alu_in_a_A, alu_in_b_A, alu_in_a_A_selector, o_out_m_B, stall_out_m_B);
       // if (o_dmem_we)
       //   $display("%d STORE %h <= %h", $time, o_dmem_addr, o_dmem_towrite);
-
+      //$display("pc_out_d_A %h pc_out_d_B %h hazard_B %h stall_B %h stall_A %h", pc_out_d_A, pc_out_d_B, hazard_B, stall_B, stall_A);
       // Start each $display() format string with a %d argument for time
       // it will make the output easier to read.  Use %b, %h, and %d
       // for binary, hex, and decimal output of additional variables.
